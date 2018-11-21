@@ -85,12 +85,22 @@ int main() {
         string event = j[0].get<string>();
         if (event == "telemetry") {
           // j[1] is the data JSON object
-          vector<double> ptsx = j[1]["ptsx"];
-          vector<double> ptsy = j[1]["ptsy"];
+          vector<double> ptsx_s = j[1]["ptsx"];
+          vector<double> ptsy_s = j[1]["ptsy"];
+          // Eigen::VectorXd ptsx = j[1]["ptsx"];
+          // Eigen::VectorXd ptsy = j[1]["ptsy"];
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
+
+          Eigen::VectorXd ptsx(ptsx_s.size());
+          Eigen::VectorXd ptsy(ptsy_s.size());
+
+          for(int i=0; i < ptsx_s.size(); i++){
+            ptsx(i) = ptsx_s[i];
+            ptsy(i) = ptsy_s[i];
+          }
 
           /*
           * TODO: Calculate steering angle and throttle using MPC.
@@ -98,8 +108,56 @@ int main() {
           * Both are in between [-1, 1].
           *
           */
-          double steer_value;
-          double throttle_value;
+          // The polynomial is fitted to a curved line so a polynomial with
+          // order 3 is sufficient.
+          auto coeffs = polyfit(ptsx, ptsy, 3);
+
+          // The cross track error is calculated by evaluating at polynomial at x, f(x)
+          // and subtracting y.
+          double cte = polyeval(coeffs, px) - py;
+
+          // Due to the sign starting at 0, the orientation error is -f'(x).
+          // derivative of coeffs[0] + coeffs[1] * x + coeffs[2] * x * x + coeffs[3] * x * x * x
+          // -> coeffs[1] + coeffs[2] * x + coeffs[3] * x * x
+          double epsi = psi - atan(coeffs[1] + coeffs[2] * px + coeffs[3] * px * px);
+
+          Eigen::VectorXd state(6);
+          state << px, py, psi, v, cte, epsi;
+
+          std::vector<double> x_vals = {state[0]};
+          std::vector<double> y_vals = {state[1]};
+          std::vector<double> psi_vals = {state[2]};
+          std::vector<double> v_vals = {state[3]};
+          std::vector<double> cte_vals = {state[4]};
+          std::vector<double> epsi_vals = {state[5]};
+          std::vector<double> delta_vals = {};
+          std::vector<double> a_vals = {};
+
+          auto vars = mpc.Solve(state, coeffs);
+
+          x_vals.push_back(vars[0]);
+          y_vals.push_back(vars[1]);
+          psi_vals.push_back(vars[2]);
+          v_vals.push_back(vars[3]);
+          cte_vals.push_back(vars[4]);
+          epsi_vals.push_back(vars[5]);
+
+          delta_vals.push_back(vars[6]);
+          a_vals.push_back(vars[7]);
+
+          state << vars[0], vars[1], vars[2], vars[3], vars[4], vars[5];
+          std::cout << "x = " << vars[0] << std::endl;
+          std::cout << "y = " << vars[1] << std::endl;
+          std::cout << "psi = " << vars[2] << std::endl;
+          std::cout << "v = " << vars[3] << std::endl;
+          std::cout << "cte = " << vars[4] << std::endl;
+          std::cout << "epsi = " << vars[5] << std::endl;
+          std::cout << "delta = " << vars[6] << std::endl;
+          std::cout << "a = " << vars[7] << std::endl;
+          std::cout << std::endl;
+
+          double steer_value = vars[6];
+          double throttle_value = vars[7];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
