@@ -92,10 +92,28 @@ int main() {
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
+          // double psi = j[1]["psi_unity"];
           double v = j[1]["speed"];
+
+          // Calculate the state difference because of the system delay
+          // px = px + v * cos(psi) * 0.1;
+          // py = py + v * sin(psi) * 0.1;
+
+          // transform the points from the map coordinate to the car coordinate
+          for(int i=0; i<ptsx_s.size(); i++){
+            double shift_x = ptsx_s[i] - px;
+            double shift_y = ptsy_s[i] - py;
+
+            ptsx_s[i] = (shift_x * cos(0-psi) - shift_y * sin(0-psi));
+            ptsy_s[i] = (shift_x * sin(0-psi) + shift_y * cos(0-psi));
+          }
 
           Eigen::VectorXd ptsx(ptsx_s.size());
           Eigen::VectorXd ptsy(ptsy_s.size());
+
+          // for(int i=0; i < ptsx_s.size(); i++){
+          //   ptsx_s[i] = -ptsx_s[i];
+          // }
 
           for(int i=0; i < ptsx_s.size(); i++){
             ptsx(i) = ptsx_s[i];
@@ -114,50 +132,56 @@ int main() {
 
           // The cross track error is calculated by evaluating at polynomial at x, f(x)
           // and subtracting y.
-          double cte = polyeval(coeffs, px) - py;
+          // double cte = polyeval(coeffs, px) - py;
+          double cte = polyeval(coeffs, 0) - 0;
 
           // Due to the sign starting at 0, the orientation error is -f'(x).
           // derivative of coeffs[0] + coeffs[1] * x + coeffs[2] * x * x + coeffs[3] * x * x * x
           // -> coeffs[1] + coeffs[2] * x + coeffs[3] * x * x
-          double epsi = psi - atan(coeffs[1] + coeffs[2] * px + coeffs[3] * px * px);
+          // double epsi = psi - atan(coeffs[1] + 2 * coeffs[2] * px + 3 * coeffs[3] * px * px);
+          double epsi = 0 - atan(coeffs[1] + 2 * coeffs[2] * 0 + 3 * coeffs[3] * 0 * 0);
+
 
           Eigen::VectorXd state(6);
-          state << px, py, psi, v, cte, epsi;
+          state << 0, 0, 0, v, cte, epsi;
 
-          std::vector<double> x_vals = {state[0]};
-          std::vector<double> y_vals = {state[1]};
-          std::vector<double> psi_vals = {state[2]};
-          std::vector<double> v_vals = {state[3]};
-          std::vector<double> cte_vals = {state[4]};
-          std::vector<double> epsi_vals = {state[5]};
-          std::vector<double> delta_vals = {};
-          std::vector<double> a_vals = {};
+          // std::vector<double> x_vals = {state[0]};
+          // std::vector<double> y_vals = {state[1]};
+          // std::vector<double> psi_vals = {state[2]};
+          // std::vector<double> v_vals = {state[3]};
+          // std::vector<double> cte_vals = {state[4]};
+          // std::vector<double> epsi_vals = {state[5]};
+          // std::vector<double> delta_vals = {};
+          // std::vector<double> a_vals = {};
 
           auto vars = mpc.Solve(state, coeffs);
 
-          x_vals.push_back(vars[0]);
-          y_vals.push_back(vars[1]);
-          psi_vals.push_back(vars[2]);
-          v_vals.push_back(vars[3]);
-          cte_vals.push_back(vars[4]);
-          epsi_vals.push_back(vars[5]);
+          // x_vals.push_back(vars[0]);
+          // y_vals.push_back(vars[1]);
+          // psi_vals.push_back(vars[2]);
+          // v_vals.push_back(vars[3]);
+          // cte_vals.push_back(vars[4]);
+          // epsi_vals.push_back(vars[5]);
 
-          delta_vals.push_back(vars[6]);
-          a_vals.push_back(vars[7]);
+          // delta_vals.push_back(vars[6]);
+          // a_vals.push_back(vars[7]);
 
-          state << vars[0], vars[1], vars[2], vars[3], vars[4], vars[5];
-          std::cout << "x = " << vars[0] << std::endl;
-          std::cout << "y = " << vars[1] << std::endl;
-          std::cout << "psi = " << vars[2] << std::endl;
-          std::cout << "v = " << vars[3] << std::endl;
-          std::cout << "cte = " << vars[4] << std::endl;
-          std::cout << "epsi = " << vars[5] << std::endl;
-          std::cout << "delta = " << vars[6] << std::endl;
-          std::cout << "a = " << vars[7] << std::endl;
-          std::cout << std::endl;
+          // state << vars[0], vars[1], vars[2], vars[3], vars[4], vars[5];
+          // std::cout << "x = " << vars[0] << std::endl;
+          // std::cout << "y = " << vars[1] << std::endl;
+          // std::cout << "psi = " << vars[2] << std::endl;
+          // std::cout << "v = " << vars[3] << std::endl;
+          // std::cout << "cte = " << vars[4] << std::endl;
+          // std::cout << "epsi = " << vars[5] << std::endl;
+          // std::cout << "delta = " << vars[6] << std::endl;
+          // std::cout << "a = " << vars[7] << std::endl;
+          // std::cout << std::endl;
 
-          double steer_value = vars[6];
-          double throttle_value = vars[7];
+          // double steer_value = vars[6]/0.436332;
+          // double throttle_value = vars[7];
+
+          double steer_value = vars[0]/deg2rad(25);
+          double throttle_value = vars[1];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
@@ -169,6 +193,15 @@ int main() {
           vector<double> mpc_x_vals;
           vector<double> mpc_y_vals;
 
+          int num_points = 25;
+          for(int i=2; i<vars.size(); i++){
+            if(i%2 == 0){
+              mpc_x_vals.push_back(vars[i]);
+            }
+            else{
+              mpc_y_vals.push_back(vars[i]);
+            }
+          }
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line
 
@@ -179,12 +212,18 @@ int main() {
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
+          double poly_inc = 2.5;
+          
+          for(int i=1; i<num_points; i++){
+            next_x_vals.push_back(poly_inc * i);
+            next_y_vals.push_back(polyeval(coeffs, poly_inc * i));
+          }
+
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
-
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
@@ -197,7 +236,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          // this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {
