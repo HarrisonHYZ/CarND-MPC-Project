@@ -87,17 +87,23 @@ int main() {
           // j[1] is the data JSON object
           vector<double> ptsx_s = j[1]["ptsx"];
           vector<double> ptsy_s = j[1]["ptsy"];
-          // Eigen::VectorXd ptsx = j[1]["ptsx"];
-          // Eigen::VectorXd ptsy = j[1]["ptsy"];
           double px = j[1]["x"];
           double py = j[1]["y"];
           double psi = j[1]["psi"];
-          // double psi = j[1]["psi_unity"];
           double v = j[1]["speed"];
+          // For delay calculation
+          double delta = j[1]["steering_angle"];
+          double a = j[1]["throttle"];
+
+          // This is the length from front to CoG that has a similar radius.
+          const double Lf = 2.67;
 
           // Calculate the state difference because of the system delay
-          // px = px + v * cos(psi) * 0.1;
-          // py = py + v * sin(psi) * 0.1;
+          px = px + v * cos(psi) * 0.1;
+          py = py + v * sin(psi) * 0.1;
+          psi = psi - v * (delta * deg2rad(25)) / Lf * 0.1;
+          v = v + a * 0.1;
+          //////////////////////////////////////////////////////////////
 
           // transform the points from the map coordinate to the car coordinate
           for(int i=0; i<ptsx_s.size(); i++){
@@ -236,7 +242,7 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          // this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {

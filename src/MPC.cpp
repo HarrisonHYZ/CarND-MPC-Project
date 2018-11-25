@@ -8,6 +8,7 @@ using CppAD::AD;
 // TODO: Set the timestep length and duration
 size_t N = 10;
 double dt = 0.1;
+// double dt_d = 0.1;
 
 // This value assumes the model presented in the classroom is used.
 //
@@ -25,7 +26,7 @@ const double Lf = 2.67;
 // The reference velocity is set to 40 mph.
 double ref_cte = 0;
 double ref_epsi = 0;
-double ref_v = 80;
+double ref_v = 60;
 
 // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
@@ -114,6 +115,20 @@ class FG_eval {
       AD<double> f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * x0 * x0 + coeffs[3] * x0 * x0 * x0;
       AD<double> psides0 = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0 + 3 * coeffs[3] * x0 * x0);
 
+////////////////////////////////////////////////////////////////////////////////////
+      // All the variables are for delay part
+      // The state at time t.
+      // AD<double> x0_delay = x0 + v0 * CppAD::cos(psi0) * dt_d;
+      // AD<double> y0_delay = y0 + v0 * CppAD::sin(psi0) * dt_d;
+      // AD<double> psi0_delay = psi0 - v0 * delta0 / Lf * dt_d;
+      // AD<double> v0_delay = v0 + a0 * dt_d;
+      // AD<double> cte0_delay = (f0 - y0) + (v0 * CppAD::sin(epsi0) * dt_d);
+      // AD<double> epsi0_delay = epsi0 - v0 * delta0 / Lf * dt_d;
+      
+      // AD<double> f0_delay = coeffs[0] + coeffs[1] * x0_delay + coeffs[2] * x0_delay * x0_delay + coeffs[3] * x0_delay * x0_delay * x0_delay;
+      // AD<double> psides0_delay = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0_delay + 3 * coeffs[3] * x0_delay * x0_delay);
+////////////////////////////////////////////////////////////////////////////////////
+
       // Here's `x` to get you started.
       // The idea here is to constraint this value to be 0.
       //
@@ -124,6 +139,7 @@ class FG_eval {
       // v_[t+1] = v[t] + a[t] * dt
       // cte[t+1] = f(x[t]) - y[t] + v[t] * sin(epsi[t]) * dt
       // epsi[t+1] = psi[t] - psides[t] + v[t] * delta[t] / Lf * dt
+
       fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
       fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
       fg[1 + psi_start + t] = psi1 - (psi0 - v0 * delta0 / Lf * dt);
@@ -132,6 +148,15 @@ class FG_eval {
           cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
       fg[1 + epsi_start + t] =
           epsi1 - ((psi0 - psides0) - v0 * delta0 / Lf * dt);
+
+      // fg[1 + x_start + t] = x1 - (x0_delay + v0_delay * CppAD::cos(psi0_delay) * dt);
+      // fg[1 + y_start + t] = y1 - (y0_delay + v0_delay * CppAD::sin(psi0_delay) * dt);
+      // fg[1 + psi_start + t] = psi1 - (psi0_delay - v0_delay * delta0 / Lf * dt);
+      // fg[1 + v_start + t] = v1 - (v0_delay + a0 * dt);
+      // fg[1 + cte_start + t] =
+      //     cte1 - ((f0_delay - y0_delay) + (v0_delay * CppAD::sin(epsi0_delay) * dt));
+      // fg[1 + epsi_start + t] =
+      //     epsi1 - ((psi0_delay - psides0_delay) - v0_delay * delta0 / Lf * dt);
     }
   }
 };
