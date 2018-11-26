@@ -16,6 +16,11 @@ If the dt is too big, the car may be out of the road before we control it. I tri
 groups of values like (50,1), (50, 0.1) or (10,1). They all didn't work because of the reasons I
 explained at the beginning.
 
-3. Deal with latency.
+3. A polynomial is fitted to waypoints.
+In order to draw the reference line and mpc line at the front of the car, I transform all the received points from the simulator
+to the car coordinate from the map coordinate. Also, I do the transformation based on the state of the car after the delay 100ms.
+With all the transformed referenced points, I do the mpc to control the car.
+
+4. Deal with latency.
 After the simulator send me the current state, I will use the current state and actuators to compute a new state after a period
 of the latency. Then I use the new state as the initial state for my mpc. The result is acceptable.
